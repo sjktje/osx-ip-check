@@ -1,0 +1,6 @@
+loopia: http://dns.loopia.se/checkip/checkip.php?raw
+ipfile: /tmp/ip.txt
+email:
+    from_addr: from@address.com
+    to_addr: to@address.com
+    smtp_out: smtp.company.com
