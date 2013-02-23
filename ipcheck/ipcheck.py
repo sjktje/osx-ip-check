@@ -98,5 +98,3 @@ def main():
     if ipcheck.is_new_ip():
         ipcheck.email_ip()
 
-if __name__ == '__main__':
-    main()
