@@ -26,69 +26,77 @@
 
 import os
 import re
+import sys
 import smtplib
 import urllib2
-
-# Edit config as you see fit. It should be fairly selfexplanatory.
-config = {
-        'loopia': 'http://dns.loopia.se/checkip/checkip.php?raw',
-        'ipfile': '/tmp/ip.txt',
-        'from_addr': 'sok@ankeborg.nu',
-        'to_addr': 'sjk@ankeborg.nu',
-        'smtp_out': 'mailout.comhem.se'
-}
+import yaml
 
 
-def get_ip():
-    '''Returns external ip address'''
-    try:
-        f = urllib2.urlopen(config["loopia"])
-    except urllib2.URLError, e:
-        print "Could not open {}: {}".format(config["loopia"], e)
-        exit()
+class Ipcheck():
+    config_file = os.path.expanduser('~/etc/ip-check.yaml')
+    ip = None
+    config = {}
 
-    data = f.read()
-    ip = re.search(r'((?:\d{1,3}\.){3}\d{1,3})', data).group(1)
-    return ip
+    def __init__(self):
+        pass
 
-def is_new_ip(newip):
-    '''Compares new ip with old ip.
+    def get_ip(self):
+        try:
+            f = urllib2.urlopen(self.config["loopia"])
+        except urllib2.URLError, e:
+            print "Could not open {}: {}".format(self.config["loopia"], e)
+            exit()
 
-    Creates new ip file with current ip if nonexistent and returns True.
-    If ip in file is equal to ip from Loopia, returns False'''
-    try:
-        f = open(config["ipfile"], 'r+')
-        oldip = f.read().rstrip()
-    except IOError:
-        f = open(config["ipfile"], 'w')
-        f.write(newip)
+        data = f.read()
+        self.ip = re.search(r'((?:\d{1,3}\.){3}\d{1,3})', data).group(1)
+
+    def is_new_ip(self):
+        try:
+            f = open(self.config["ipfile"], 'r+')
+            oldip = f.read().rstrip()
+        except IOError:
+            f = open(self.config["ipfile"], 'w')
+            f.write(newip)
+            f.close()
+            return True
+
+        if self.ip == oldip:
+            f.close()
+            return False
+        else:
+            f.truncate()
+            f.write(self.ip)
+            f.close()
+            return True
+
+    def email_ip(self):
+        msg = r"From: {}\r\nTo: {}\r\nSubject: {}\r\n\r\nMin IP-adress är {}".format(
+                self.config["email"]["from_addr"], self.config["email"]["to_addr"], self.ip, self.ip)
+
+        server = smtplib.SMTP_SSL(self.config["email"]["smtp_out"])
+        # server.set_debuglevel(1)
+        server.sendmail(self.config["email"]["from_addr"], self.config["email"]["to_addr"], msg)
+        server.quit()
+
+    def load_config(self):
+        try:
+            f = open(self.config_file)
+        except IOError, e:
+            print "Could not read configuration file: {}".format(e)
+            sys.exit()
+
+        config = yaml.load(f)
         f.close()
-        return True
-
-    if newip == oldip:
-        f.close()
-        return False
-    else:
-        f.truncate()
-        f.write(newip)
-        f.close()
-        return True
-
-def email_ip(ip):
-    msg = r"From: {}\r\nTo: {}\r\nSubject: {}\r\n\r\nMin IP-adress är {}".format(config["from_addr"], config["to_addr"], ip, ip)
-
-    server = smtplib.SMTP_SSL(config["smtp_out"])
-    #server.set_debuglevel(1)
-    server.sendmail(config["from_addr"], config["to_addr"], msg)
-    server.quit()
+        self.config = config
 
 def main():
-    extip = get_ip()
+    ipcheck = Ipcheck()
 
-    if is_new_ip(extip):
-        print "Det är ett nytt ip!"
-        email_ip(extip)
+    ipcheck.load_config()
+    ipcheck.get_ip()
 
+    if ipcheck.is_new_ip():
+        ipcheck.email_ip()
 
 if __name__ == '__main__':
     main()
