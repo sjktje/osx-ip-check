@@ -70,7 +70,7 @@ class Ipcheck():
             return True
 
     def email_ip(self):
-        msg = r"From: {}\r\nTo: {}\r\nSubject: {}\r\n\r\nMin IP-adress är {}".format(
+        msg = r"From: {}\r\nTo: {}\r\nSubject: {}\r\n\r\nMy IP-adress is {}".format(
                 self.config["email"]["from_addr"], self.config["email"]["to_addr"], self.ip, self.ip)
 
         server = smtplib.SMTP_SSL(self.config["email"]["smtp_out"])
